@@ -10,34 +10,34 @@
 <helmet>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getFirestore, collection, addDoc, getDocs, query, orderBy,
-    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp, Timestamp
+    getFirestore, collection, addDoc, query, orderBy,
+    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import {
     getStorage, ref, uploadBytes, getDownloadURL
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-  // SUSTITUYE estos valores por los de tu proyecto Firebase
-  // (Firebase console -> Configuracion del proyecto -> tus apps -> SDK config)
   const firebaseConfig = {
-  apiKey: "AIzaSyBOXeF1EDWf-4va-O9bOn5YzWdOzdOkqMc",
-  authDomain: "revisatugrieta.firebaseapp.com",
-  projectId: "revisatugrieta",
-  storageBucket: "revisatugrieta.firebasestorage.app",
-  messagingSenderId: "611150807853",
-  appId: "1:611150807853:web:65791e60ba98fa5827c9a4"
-};
+    apiKey: "AIzaSyBOXeF1EDWf-4va-O9bOn5YzWdOzdOkqMc",
+    authDomain: "revisatugrieta.firebaseapp.com",
+    projectId: "revisatugrieta",
+    storageBucket: "revisatugrieta.firebasestorage.app",
+    messagingSenderId: "611150807853",
+    appId: "1:611150807853:web:65791e60ba98fa5827c9a4"
+  };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const storage = getStorage(app);
 
   window.rgFirebase = {
-    db, storage, collection, addDoc, getDocs, query, orderBy,
-    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp, Timestamp,
+    db, storage, collection, addDoc, query, orderBy,
+    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp,
     ref, uploadBytes, getDownloadURL
   };
   window.rgFirebaseReady = true;
@@ -47,6 +47,7 @@
   html{scroll-behavior:smooth;}
   body{margin:0;background:#F4EFE8;color:#1A1A1A;font-family:"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;}
   a{color:inherit;}
+  #rg-map{height:420px;width:100%;border-radius:10px;border:1px solid #CCC2B4;z-index:1;}
   @media (max-width:860px){
     .rg-galgrid{grid-template-columns:repeat(2,1fr)!important;}
     .rg-info4{grid-template-columns:repeat(2,1fr)!important;}
@@ -58,6 +59,7 @@
     .rg-hero-h1{font-size:44px!important;}
     .rg-wallgrid{grid-template-columns:1fr!important;}
     .rg-form2{grid-template-columns:1fr!important;}
+    #rg-map{height:300px;}
   }
   @media (max-width:520px){
     .rg-galgrid{grid-template-columns:1fr!important;}
@@ -81,9 +83,10 @@
         <span style="font-family:Georgia,serif;font-size:20px;color:#fff;font-weight:600;letter-spacing:.2px;">Revisa tu Grieta</span>
       </a>
       <div class="rg-navlinks" style="display:flex;align-items:center;gap:6px;">
-        <a href="#inicio" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;transition:background .15s;" style-hover="background:rgba(255,255,255,0.15);color:#fff;">Inicio</a>
-        <a href="#formulario" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;transition:background .15s;" style-hover="background:rgba(255,255,255,0.15);color:#fff;">Evaluar Grieta</a>
-        <a href="#muro-comunitario" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;transition:background .15s;" style-hover="background:rgba(255,255,255,0.15);color:#fff;">Muro Comunitario</a>
+        <a href="#inicio" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;">Inicio</a>
+        <a href="#mapa-grietas" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;">Mapa</a>
+        <a href="#formulario" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;">Evaluar Grieta</a>
+        <a href="#muro-comunitario" style="text-decoration:none;color:rgba(255,255,255,0.82);font-size:14.5px;padding:8px 14px;border-radius:6px;">Muro Comunitario</a>
       </div>
     </div>
   </nav>
@@ -112,8 +115,8 @@
       <h1 class="rg-hero-h1" style="font-family:Georgia,serif;font-size:54px;line-height:1.06;margin:14px 0 18px;font-weight:600;">Revisa tu Grieta</h1>
       <p style="font-size:17.5px;line-height:1.6;color:rgba(255,255,255,0.86);max-width:640px;margin:0 auto 30px;">Herramienta ciudadana para evaluar grietas estructurales tras los terremotos del 24 de junio de 2026 en Venezuela. Comparte tu caso, recibe orientación de la comunidad y sabe cuándo llamar a un profesional.</p>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
-        <a href="#formulario" style="text-decoration:none;background:#fff;color:#1A3A5C;font-weight:700;font-size:15.5px;padding:14px 26px;border-radius:7px;transition:transform .12s;" style-hover="transform:translateY(-1px);">Evaluar una Grieta</a>
-        <a href="#muro-comunitario" style="text-decoration:none;background:transparent;color:#fff;font-weight:600;font-size:15.5px;padding:14px 26px;border-radius:7px;border:1.5px solid rgba(255,255,255,0.45);transition:background .15s;" style-hover="background:rgba(255,255,255,0.12);">Muro Comunitario</a>
+        <a href="#formulario" style="text-decoration:none;background:#fff;color:#1A3A5C;font-weight:700;font-size:15.5px;padding:14px 26px;border-radius:7px;">Evaluar una Grieta</a>
+        <a href="#muro-comunitario" style="text-decoration:none;background:transparent;color:#fff;font-weight:600;font-size:15.5px;padding:14px 26px;border-radius:7px;border:1.5px solid rgba(255,255,255,0.45);">Muro Comunitario</a>
       </div>
     </div>
   </section>
@@ -123,7 +126,7 @@
     <div style="max-width:1180px;margin:0 auto;">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px;">
         <h2 style="font-family:Georgia,serif;color:#fff;font-size:27px;margin:0;font-weight:600;">Venezuela, 24 de junio de 2026</h2>
-        <a href="https://instagram.com/andresavellanedazeiter" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.62);font-size:13.5px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.25);padding-bottom:2px;" style-hover="color:#fff;">Fotografías: @andresavellanedazeiter</a>
+        <a href="https://instagram.com/andresavellanedazeiter" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.62);font-size:13.5px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.25);padding-bottom:2px;">Fotografías: @andresavellanedazeiter</a>
       </div>
       <div class="rg-galgrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
         <figure style="position:relative;margin:0;aspect-ratio:3/4;border-radius:4px;overflow:hidden;background:#222;">
@@ -151,27 +154,27 @@
   <section style="background:#fff;padding:62px 24px;">
     <div style="max-width:1140px;margin:0 auto;">
       <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 16px;font-weight:600;">¿Qué ocurrió el 24 de junio de 2026?</h2>
-      <p style="font-size:16.5px;line-height:1.65;color:#6B6358;max-width:820px;margin:0 0 34px;">Sismos de M 7.2 a las 8:23 am y una réplica de M 7.5, con epicentro en San Felipe/Yumare, Yaracuy. El impacto se sintió con fuerza en Caracas, La Guaira y el litoral central.</p>
+      <p style="font-size:16.5px;line-height:1.65;color:#6B6358;max-width:820px;margin:0 0 34px;">Dos sismos de M 7.2 y M 7.5 con apenas 39 segundos de diferencia, a las 18:04 hora local, con epicentro en San Felipe/Yumare, Yaracuy. El impacto se sintió con fuerza en Caracas, La Guaira y el litoral central. Es el terremoto más devastador en Venezuela en más de un siglo.</p>
       <div class="rg-info4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:9px;padding:20px;">
           <div style="font-size:24px;margin-bottom:8px;">📍</div>
           <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Epicentro</div>
-          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">San Felipe/Yumare, Yaracuy. Profundidad ~15–20 km.</div>
+          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">San Felipe/Yumare, Yaracuy. Profundidad ~10–20 km.</div>
         </div>
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:9px;padding:20px;">
           <div style="font-size:24px;margin-bottom:8px;">🏚️</div>
           <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Zonas más afectadas</div>
-          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">La Guaira, Caracas (Catia, La Pastora), Yaracuy, Carabobo, Miranda.</div>
+          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">La Guaira (Caraballeda, Catia La Mar), Caracas, Yaracuy, Carabobo, Miranda.</div>
         </div>
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:9px;padding:20px;">
           <div style="font-size:24px;margin-bottom:8px;">⏱️</div>
           <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Réplicas</div>
-          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">+80 réplicas en 48 h, varias de M 5.0+.</div>
+          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">+611 réplicas registradas al 29 de junio, varias de M 5.0+.</div>
         </div>
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:9px;padding:20px;">
           <div style="font-size:24px;margin-bottom:8px;">🏗️</div>
-          <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Por qué revisar</div>
-          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">Las réplicas convierten grietas menores en fallas estructurales.</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:6px;">Edificios afectados</div>
+          <div style="font-size:13.5px;line-height:1.55;color:#6B6358;">855 edificios evaluados: 189 colapso total, 666 con daños severos.</div>
         </div>
       </div>
     </div>
@@ -183,8 +186,6 @@
       <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 10px;font-weight:600;">¿Qué daños dejaron los sismos?</h2>
       <p style="font-size:16px;line-height:1.6;color:#6B6358;max-width:760px;margin:0 0 32px;">Los terremotos del 24 de junio produjeron tres categorías principales de daño estructural.</p>
       <div class="rg-damage3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
-
-        <!-- Card 1: corte sísmico -->
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:10px;overflow:hidden;">
           <div style="background:#ddd7cf;">
             <svg width="100%" height="190" viewBox="0 0 320 190" fill="none" aria-hidden="true" style="display:block;">
@@ -206,8 +207,6 @@
             <p style="font-size:14px;line-height:1.6;color:#6B6358;margin:0;">Las fuerzas horizontales del sismo generan grietas diagonales (a 45°) o en escalera. Son las más características del daño sísmico y requieren evaluación profesional.</p>
           </div>
         </div>
-
-        <!-- Card 2: separación de elementos -->
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:10px;overflow:hidden;">
           <div style="background:#ddd7cf;">
             <svg width="100%" height="190" viewBox="0 0 320 190" fill="none" aria-hidden="true" style="display:block;">
@@ -218,14 +217,8 @@
               <line x1="92" y1="71" x2="228" y2="71" stroke="#a89f90" stroke-width="0.9"/>
               <line x1="92" y1="94" x2="228" y2="94" stroke="#a89f90" stroke-width="0.9"/>
               <line x1="92" y1="117" x2="228" y2="117" stroke="#a89f90" stroke-width="0.9"/>
-              <line x1="125" y1="48" x2="125" y2="71" stroke="#a89f90" stroke-width="0.9"/>
-              <line x1="160" y1="71" x2="160" y2="94" stroke="#a89f90" stroke-width="0.9"/>
-              <line x1="125" y1="94" x2="125" y2="117" stroke="#a89f90" stroke-width="0.9"/>
-              <line x1="195" y1="117" x2="195" y2="140" stroke="#a89f90" stroke-width="0.9"/>
               <path d="M92 50 L93 70 L91 94 L93 116 L92 138" stroke="#A52A2A" stroke-width="2.4" fill="none"/>
               <path d="M228 50 L227 72 L229 96 L227 118 L228 138" stroke="#A52A2A" stroke-width="2.4" fill="none"/>
-              <path d="M84 96 L74 96 M77 92 L73 96 L77 100" stroke="#A52A2A" stroke-width="1.6" fill="none"/>
-              <path d="M236 96 L246 96 M243 92 L247 96 L243 100" stroke="#A52A2A" stroke-width="1.6" fill="none"/>
               <text x="160" y="178" font-family="monospace" font-size="9.5" fill="#8a3030" text-anchor="middle">separación columna–muro</text>
             </svg>
           </div>
@@ -234,8 +227,6 @@
             <p style="font-size:14px;line-height:1.6;color:#6B6358;margin:0;">El sismo puede separar los muros de relleno de las columnas o vigas estructurales. Se ve como una grieta vertical recta en el borde del muro.</p>
           </div>
         </div>
-
-        <!-- Card 3: abombamiento -->
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:10px;overflow:hidden;">
           <div style="background:#ddd7cf;">
             <svg width="100%" height="190" viewBox="0 0 320 190" fill="none" aria-hidden="true" style="display:block;">
@@ -243,7 +234,6 @@
               <path d="M180 38 L180 150 L256 168 L256 56 Z" fill="#bdb5a7" stroke="#8a8276" stroke-width="1.4"/>
               <path d="M196 70 Q236 96 234 150 Q210 156 196 152 Q200 110 196 70 Z" fill="#d8cdbb" stroke="#a89f90" stroke-width="1" opacity="0.9"/>
               <path d="M222 64 L220 92 L224 120 L221 154" stroke="#A52A2A" stroke-width="2.4" fill="none"/>
-              <path d="M236 104 L262 110 M256 104 L264 110 L255 114" stroke="#A52A2A" stroke-width="1.8" fill="none"/>
               <text x="178" y="183" font-family="monospace" font-size="9.5" fill="#8a3030" text-anchor="middle">abombamiento / pandeo</text>
             </svg>
           </div>
@@ -252,7 +242,6 @@
             <p style="font-size:14px;line-height:1.6;color:#6B6358;margin:0;">El muro pierde verticalidad y se curva hacia afuera. Es el daño más peligroso: el muro puede colapsar sin previo aviso. Requiere evacuación inmediata.</p>
           </div>
         </div>
-
       </div>
     </div>
   </section>
@@ -262,19 +251,17 @@
     <div style="max-width:1140px;margin:0 auto;">
       <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 10px;font-weight:600;">Estado de la Emergencia</h2>
       <p style="font-size:16px;line-height:1.6;color:#6B6358;max-width:760px;margin:0 0 26px;">Cifras provisionales recopiladas de medios y organismos públicos.</p>
-
       <div style="background:#fff;border:1px solid #CCC2B4;border-radius:12px;padding:26px;">
         <div style="background:#FFF5E6;border:1px solid #e9c98f;border-radius:8px;padding:13px 16px;font-size:13.5px;line-height:1.55;color:#7a4a00;margin-bottom:24px;">
-          Estas cifras son provisionales, varían según la fuente y se actualizan manualmente — no son un feed en vivo. <strong style="font-weight:700;">Última actualización: 28 de junio de 2026.</strong>
+          Estas cifras son provisionales, varían según la fuente y se actualizan manualmente — no son un feed en vivo. <strong style="font-weight:700;">Última actualización: 29 de junio de 2026.</strong>
         </div>
-
         <div class="rg-kpi4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
           <div style="background:#FDF0F0;border:1px solid #e6c4c4;border-radius:9px;padding:18px;text-align:center;">
-            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#A52A2A;line-height:1;">+1.400</div>
+            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#A52A2A;line-height:1;">+1.700</div>
             <div style="font-size:13px;color:#6B6358;margin-top:8px;">Fallecidos</div>
           </div>
           <div style="background:#FFF5E6;border:1px solid #e6cfa0;border-radius:9px;padding:18px;text-align:center;">
-            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#B35A00;line-height:1;">3.360</div>
+            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#B35A00;line-height:1;">5.034</div>
             <div style="font-size:13px;color:#6B6358;margin-top:8px;">Heridos</div>
           </div>
           <div style="background:#EBF2FA;border:1px solid #bcd2ea;border-radius:9px;padding:18px;text-align:center;">
@@ -282,11 +269,10 @@
             <div style="font-size:13px;color:#6B6358;margin-top:8px;">Bajo escombros</div>
           </div>
           <div style="background:#EEF6EE;border:1px solid #bdd9be;border-radius:9px;padding:18px;text-align:center;">
-            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#2C5F2E;line-height:1;">6,76 M</div>
-            <div style="font-size:13px;color:#6B6358;margin-top:8px;">Personas afectadas (est.)</div>
+            <div style="font-family:Georgia,serif;font-size:34px;font-weight:700;color:#2C5F2E;line-height:1;">22.619</div>
+            <div style="font-size:13px;color:#6B6358;margin-top:8px;">Atendidos en hospitales</div>
           </div>
         </div>
-
         <div class="rg-dash" style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
           <div class="rg-line" style="grid-column:1 / 2;grid-row:1 / 3;background:#fafaf8;border:1px solid #CCC2B4;border-radius:9px;padding:16px;display:flex;flex-direction:column;min-height:300px;">
             <div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:12px;">Evolución de fallecidos reportados por día</div>
@@ -305,8 +291,22 @@
     </div>
   </section>
 
+  <!-- 7b. MAPA DE GRIETAS -->
+  <section id="mapa-grietas" style="background:#fff;padding:62px 24px;">
+    <div style="max-width:1140px;margin:0 auto;">
+      <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 10px;font-weight:600;">Mapa de Grietas Reportadas</h2>
+      <p style="font-size:16px;line-height:1.6;color:#6B6358;max-width:760px;margin:0 0 18px;">Ubicación de los casos publicados por la comunidad. Los pins rojos indican urgencia alta, ámbar requieren revisión y verdes pueden vigilarse.</p>
+      <div style="display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6B6358;"><span style="width:12px;height:12px;border-radius:50%;background:#A52A2A;display:inline-block;"></span>Urgente / Evacuar</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6B6358;"><span style="width:12px;height:12px;border-radius:50%;background:#B35A00;display:inline-block;"></span>Revisión profesional</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6B6358;"><span style="width:12px;height:12px;border-radius:50%;background:#2C5F2E;display:inline-block;"></span>Vigilar</span>
+      </div>
+      <div id="rg-map"></div>
+    </div>
+  </section>
+
   <!-- 8. ¿CÓMO FUNCIONA? -->
-  <section style="background:#fff;padding:62px 24px;">
+  <section style="background:#F4EFE8;padding:62px 24px;">
     <div style="max-width:1140px;margin:0 auto;">
       <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 36px;font-weight:600;text-align:center;">¿Cómo funciona esta herramienta?</h2>
       <div class="rg-steps4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;">
@@ -327,12 +327,12 @@
         </div>
         <div style="background:#fff;border:1px solid #CCC2B4;border-radius:9px;padding:22px;">
           <div style="font-size:22px;margin-bottom:10px;">4️⃣</div>
-          <div style="font-weight:700;font-size:15.5px;margin-bottom:8px;">Comparte con la comunidad</div>
-          <div style="font-size:13.5px;line-height:1.6;color:#6B6358;">Publica tu caso en el Muro Comunitario. Ingenieros y vecinos pueden ver tu grieta y comentar.</div>
+          <div style="font-weight:700;font-size:15.5px;margin-bottom:8px;">Apareces en el mapa</div>
+          <div style="font-size:13.5px;line-height:1.6;color:#6B6358;">Tu caso se muestra en el mapa comunitario y en el muro para que ingenieros y vecinos puedan orientarte.</div>
         </div>
       </div>
       <div style="text-align:center;margin-top:36px;">
-        <a href="#formulario" style="text-decoration:none;display:inline-block;background:#1A3A5C;color:#fff;font-weight:700;font-size:15.5px;padding:15px 32px;border-radius:8px;transition:background .15s;" style-hover="background:#2A5080;">Comenzar evaluación →</a>
+        <a href="#formulario" style="text-decoration:none;display:inline-block;background:#1A3A5C;color:#fff;font-weight:700;font-size:15.5px;padding:15px 32px;border-radius:8px;">Comenzar evaluación →</a>
       </div>
     </div>
   </section>
@@ -341,7 +341,7 @@
   <section id="formulario" style="background:#F4EFE8;padding:62px 24px;border-top:1px solid #e3dccf;">
     <div style="max-width:760px;margin:0 auto;">
       <h2 style="font-family:Georgia,serif;font-size:32px;margin:0 0 10px;font-weight:600;">Evaluar y publicar tu grieta</h2>
-      <p style="font-size:16px;line-height:1.6;color:#6B6358;margin:0 0 28px;">Describe la grieta, sube una foto y recibe un nivel de urgencia orientativo. Al publicar, tu caso aparece en el Muro Comunitario para que vecinos e ingenieros puedan verlo y comentar.</p>
+      <p style="font-size:16px;line-height:1.6;color:#6B6358;margin:0 0 28px;">Describe la grieta, sube una foto y recibe un nivel de urgencia orientativo. Al publicar, tu caso aparece en el Muro Comunitario y en el mapa.</p>
 
       <form ref="{{ formRef }}" onSubmit="{{ onSubmit }}" style="background:#fff;border:1px solid #CCC2B4;border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:22px;">
 
@@ -404,7 +404,7 @@
 
         <div style="display:flex;flex-direction:column;gap:10px;">
           <span style="font-size:13.5px;font-weight:700;">Foto de la grieta (opcional)</span>
-          <label style="display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed #c2b8a8;border-radius:10px;padding:22px;cursor:pointer;background:#faf7f1;color:#6B6358;font-size:14px;transition:border-color .15s,color .15s;" style-hover="border-color:#1A3A5C;color:#1A3A5C;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed #c2b8a8;border-radius:10px;padding:22px;cursor:pointer;background:#faf7f1;color:#6B6358;font-size:14px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V5M12 5 8 9M12 5l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             <span>Toca para subir una foto</span>
             <input type="file" accept="image/*" onChange="{{ onPhoto }}" style="display:none;"/>
@@ -417,7 +417,7 @@
           </sc-if>
         </div>
 
-        <button type="submit" style="background:#1A3A5C;color:#fff;border:0;border-radius:8px;padding:15px;font-size:15.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;" style-hover="background:#2A5080;">Calcular urgencia y publicar →</button>
+        <button type="submit" style="background:#1A3A5C;color:#fff;border:0;border-radius:8px;padding:15px;font-size:15.5px;font-weight:700;cursor:pointer;font-family:inherit;">Calcular urgencia y publicar →</button>
       </form>
     </div>
   </section>
@@ -430,7 +430,6 @@
         <span style="font-size:13.5px;color:#6B6358;">{{ postsCount }} casos publicados</span>
       </div>
       <p style="font-size:14px;line-height:1.6;color:#6B6358;max-width:820px;margin:0 0 28px;">Los casos publicados aquí son visibles para toda la comunidad. Si el ancho supera 15 mm, el muro está abombado o se ve la cabilla, <strong style="color:#A52A2A;">evacúa y llama al 171</strong> sin esperar comentarios.</p>
-
       <div class="rg-wallgrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px;">
         <sc-for list="{{ postsView }}" as="post" hint-placeholder-count="2">
           <article style="border:1px solid #CCC2B4;border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column;border-top:3px solid {{ post.cardAccent }};">
@@ -460,7 +459,7 @@
                 </sc-for>
                 <div style="display:flex;gap:8px;">
                   <input id="cmt-{{ post.id }}" type="text" placeholder="Escribe un comentario…" style="flex:1;padding:9px 11px;border:1px solid #CCC2B4;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:#1A1A1A;"/>
-                  <button type="button" onClick="{{ post.onComment }}" style="background:#1A3A5C;color:#fff;border:0;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;" style-hover="background:#2A5080;">Enviar</button>
+                  <button type="button" onClick="{{ post.onComment }}" style="background:#1A3A5C;color:#fff;border:0;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enviar</button>
                 </div>
               </div>
             </div>
@@ -476,11 +475,13 @@
       <p style="font-size:14px;line-height:1.6;margin:0 0 8px;color:rgba(255,255,255,0.8);">Revisa tu Grieta — Herramienta ciudadana post-sísmica. No sustituye inspección profesional.</p>
       <p style="font-size:14px;margin:0 0 16px;color:rgba(255,255,255,0.6);">Protección Civil: 171 · Bomberos: 166</p>
       <div style="display:flex;gap:8px;justify-content:center;align-items:center;font-size:13.5px;color:rgba(255,255,255,0.55);">
-        <a href="#inicio" style="text-decoration:none;" style-hover="color:#fff;">Inicio</a>
+        <a href="#inicio" style="text-decoration:none;">Inicio</a>
         <span style="opacity:0.4;">·</span>
-        <a href="#formulario" style="text-decoration:none;" style-hover="color:#fff;">Evaluar Grieta</a>
+        <a href="#mapa-grietas" style="text-decoration:none;">Mapa</a>
         <span style="opacity:0.4;">·</span>
-        <a href="#muro-comunitario" style="text-decoration:none;" style-hover="color:#fff;">Muro Comunitario</a>
+        <a href="#formulario" style="text-decoration:none;">Evaluar Grieta</a>
+        <span style="opacity:0.4;">·</span>
+        <a href="#muro-comunitario" style="text-decoration:none;">Muro Comunitario</a>
       </div>
     </div>
   </footer>
@@ -493,10 +494,14 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this._charts = [];
+    this._mapMarkers = [];
+    this._map = null;
+    this._geocodeCache = {};
     this.formRef = React.createRef();
     this.initCharts();
     this.waitForFirebase(() => this.subscribePosts());
   }
+
   componentWillUnmount() {
     (this._charts || []).forEach(c => { try { c.destroy(); } catch (e) {} });
     if (this._unsub) this._unsub();
@@ -507,8 +512,64 @@ class Component extends DCLogic {
     setTimeout(() => this.waitForFirebase(cb), 120);
   }
 
+  initMap() {
+    if (this._map || !window.L) return;
+    const L = window.L;
+    this._map = L.map('rg-map', { zoomControl: true }).setView([10.5, -66.9], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(this._map);
+  }
+
+  async geocode(ubicacion) {
+    if (this._geocodeCache[ubicacion]) return this._geocodeCache[ubicacion];
+    const query = encodeURIComponent(ubicacion + ', Venezuela');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+        headers: { 'Accept-Language': 'es', 'User-Agent': 'RevisaTuGrieta/1.0' }
+      });
+      const data = await res.json();
+      if (data && data[0]) {
+        const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        this._geocodeCache[ubicacion] = coords;
+        return coords;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async updateMap(posts) {
+    if (!window.L) { setTimeout(() => this.updateMap(posts), 300); return; }
+    this.initMap();
+    const L = window.L;
+    const map = this._map;
+    this._mapMarkers.forEach(m => map.removeLayer(m));
+    this._mapMarkers = [];
+    const colors = { rojo: '#A52A2A', ambar: '#B35A00', verde: '#2C5F2E' };
+    for (const post of posts) {
+      const coords = await this.geocode(post.ubicacion);
+      if (!coords) continue;
+      const color = colors[post.urgencia] || colors.verde;
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+      const marker = L.marker([coords.lat, coords.lng], { icon })
+        .bindPopup(`<strong style="font-size:13px;">${post.ubicacion}</strong><br><span style="font-size:12px;color:#666;">${post.autor || 'Anónimo'}</span>`)
+        .addTo(map);
+      this._mapMarkers.push(marker);
+    }
+    if (this._mapMarkers.length > 0) {
+      const group = L.featureGroup(this._mapMarkers);
+      map.fitBounds(group.getBounds().pad(0.2));
+    }
+  }
+
   initCharts() {
-    if (!window.Chart) { this._t = setTimeout(() => this.initCharts(), 120); return; }
+    if (!window.Chart) { setTimeout(() => this.initCharts(), 120); return; }
     const Chart = window.Chart;
     Chart.defaults.font.family = "'Helvetica Neue', Arial, sans-serif";
     Chart.defaults.font.size = 12;
@@ -523,18 +584,14 @@ class Component extends DCLogic {
       this._charts.push(new Chart(line.getContext("2d"), {
         type: "line",
         data: {
-          labels: ["24 jun", "25 jun", "26 jun", "27 jun", "28 jun"],
+          labels: ["24 jun", "25 jun", "26 jun", "27 jun", "28 jun", "29 jun"],
           datasets: [{
             label: "Fallecidos reportados",
-            data: [null, 164, 235, 920, 1400],
+            data: [null, 164, 589, 920, 1430, 1719],
             borderColor: RED,
             backgroundColor: "rgba(165,42,42,0.12)",
-            fill: true,
-            tension: 0.25,
-            spanGaps: true,
-            pointBackgroundColor: RED,
-            pointRadius: 4,
-            borderWidth: 2.2
+            fill: true, tension: 0.25, spanGaps: true,
+            pointBackgroundColor: RED, pointRadius: 4, borderWidth: 2.2
           }]
         },
         options: {
@@ -556,10 +613,9 @@ class Component extends DCLogic {
         data: {
           labels: ["Fallecidos", "Heridos", "Bajo escombros"],
           datasets: [{
-            data: [1400, 3360, 50000],
+            data: [1719, 5034, 50000],
             backgroundColor: [RED, AMBER, BLUE],
-            borderColor: "#fafaf8",
-            borderWidth: 2
+            borderColor: "#fafaf8", borderWidth: 2
           }]
         },
         options: {
@@ -580,8 +636,8 @@ class Component extends DCLogic {
         data: {
           labels: ["La Guaira", "Caracas", "Yaracuy", "Miranda"],
           datasets: [
-            { label: "Colapsados", data: [100, 80, 40, 20], backgroundColor: RED },
-            { label: "Con daños", data: [80, 120, 60, 45], backgroundColor: AMBER }
+            { label: "Colapso total", data: [140, 30, 12, 7], backgroundColor: RED },
+            { label: "Daños severos", data: [380, 160, 80, 46], backgroundColor: AMBER }
           ]
         },
         options: {
@@ -615,6 +671,7 @@ class Component extends DCLogic {
         };
       });
       this.setState({ posts, postsLoading: false });
+      this.updateMap(posts);
     }, (err) => {
       console.error("Error leyendo Firestore:", err);
       this.setState({ postsLoading: false });
@@ -670,9 +727,7 @@ class Component extends DCLogic {
         const c = document.createElement("canvas"); c.width = w; c.height = h;
         c.getContext("2d").drawImage(img, 0, 0, w, h);
         const dataUrl = c.toDataURL("image/jpeg", 0.82);
-        c.toBlob((blob) => {
-          this.setState({ photo: dataUrl, photoBlob: blob });
-        }, "image/jpeg", 0.82);
+        c.toBlob((blob) => { this.setState({ photo: dataUrl, photoBlob: blob }); }, "image/jpeg", 0.82);
       };
       img.src = reader.result;
     };
@@ -699,37 +754,25 @@ class Component extends DCLogic {
     const descripcion = (f.querySelector('[name="descripcion"]').value || "").trim();
     const senales = Array.prototype.slice.call(f.querySelectorAll('[name="senal"]:checked')).map(c => c.value);
     const urgencia = this.computeUrgency(ancho, senales, elemento);
-
     this.setState({ loading: true });
-
     try {
       const fb = window.rgFirebase;
       let fotoUrl = null;
-
       if (this.state.photoBlob) {
         const path = `grietas/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
         const storageRef = fb.ref(fb.storage, path);
         await fb.uploadBytes(storageRef, this.state.photoBlob, { contentType: "image/jpeg" });
         fotoUrl = await fb.getDownloadURL(storageRef);
       }
-
       await fb.addDoc(fb.collection(fb.db, "grietas"), {
         ubicacion, autor, elemento, ancho, senales, descripcion,
         foto: fotoUrl, urgencia, fecha: fb.serverTimestamp(), comentarios: []
       });
-
       this.setState({ photo: null, photoBlob: null, loading: false, result: this.resultBanner(urgencia, true) });
       f.reset();
     } catch (err) {
-      console.error("Error publicando en Firebase:", err);
-      this.setState({
-        loading: false,
-        result: {
-          style: { background: "#FDF0F0", border: "1px solid #e6b3b3", borderRadius: "8px", padding: "14px 16px", color: "#7a1f1f" },
-          title: "No se pudo publicar",
-          text: "Hubo un error guardando tu caso. Revisa tu conexión e inténtalo de nuevo en unos segundos."
-        }
-      });
+      console.error("Error publicando:", err);
+      this.setState({ loading: false, result: { style: { background: "#FDF0F0", border: "1px solid #e6b3b3", borderRadius: "8px", padding: "14px 16px", color: "#7a1f1f" }, title: "No se pudo publicar", text: "Hubo un error. Revisa tu conexión e inténtalo de nuevo." } });
     }
   };
 
@@ -741,11 +784,8 @@ class Component extends DCLogic {
     input.value = "";
     try {
       const fb = window.rgFirebase;
-      const ref = fb.doc(fb.db, "grietas", postId);
-      await fb.updateDoc(ref, { comentarios: fb.arrayUnion({ autor: "Tú", txt }) });
-    } catch (err) {
-      console.error("Error añadiendo comentario:", err);
-    }
+      await fb.updateDoc(fb.doc(fb.db, "grietas", postId), { comentarios: fb.arrayUnion({ autor: "Tú", txt }) });
+    } catch (err) { console.error("Error añadiendo comentario:", err); }
   };
 
   timeAgo(ts) {
@@ -767,7 +807,8 @@ class Component extends DCLogic {
     const postsView = (this.state.posts || []).map(p => {
       const u = urg[p.urgencia] || urg.verde;
       return {
-        id: p.id, ubicacion: p.ubicacion, autor: p.autor, elementoLabel: p.elemento || "No especificado", anchoLabel: p.ancho || "No especificado",
+        id: p.id, ubicacion: p.ubicacion, autor: p.autor,
+        elementoLabel: p.elemento || "No especificado", anchoLabel: p.ancho || "No especificado",
         descripcion: p.descripcion, foto: p.foto, hasFoto: !!p.foto,
         senales: p.senales || [], hasSenales: (p.senales || []).length > 0,
         comentarios: p.comentarios || [],
