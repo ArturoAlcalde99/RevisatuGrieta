@@ -16,11 +16,14 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getFirestore, collection, addDoc, query, orderBy,
-    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp
+    onSnapshot, doc, getDoc, updateDoc, arrayUnion, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import {
     getStorage, ref, uploadBytes, getDownloadURL
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBOXeF1EDWf-4va-O9bOn5YzWdOzdOkqMc",
@@ -34,11 +37,14 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const storage = getStorage(app);
+  const auth = getAuth(app);
+  const googleProvider = new GoogleAuthProvider();
 
   window.rgFirebase = {
     db, storage, collection, addDoc, query, orderBy,
-    onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp,
-    ref, uploadBytes, getDownloadURL
+    onSnapshot, doc, getDoc, updateDoc, arrayUnion, serverTimestamp,
+    ref, uploadBytes, getDownloadURL,
+    auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged
   };
   window.rgFirebaseReady = true;
 </script>
@@ -429,7 +435,24 @@
         <h2 style="font-family:Georgia,serif;font-size:32px;margin:0;font-weight:600;">Muro Comunitario</h2>
         <span style="font-size:13.5px;color:#6B6358;">{{ postsCount }} casos publicados</span>
       </div>
-      <p style="font-size:14px;line-height:1.6;color:#6B6358;max-width:820px;margin:0 0 28px;">Los casos publicados aquí son visibles para toda la comunidad. Si el ancho supera 15 mm, el muro está abombado o se ve la cabilla, <strong style="color:#A52A2A;">evacúa y llama al 171</strong> sin esperar comentarios.</p>
+      <p style="font-size:14px;line-height:1.6;color:#6B6358;max-width:820px;margin:0 0 18px;">Los casos publicados aquí son visibles para toda la comunidad. Si el ancho supera 15 mm, el muro está abombado o se ve la cabilla, <strong style="color:#A52A2A;">evacúa y llama al 171</strong> sin esperar comentarios.</p>
+
+      <div style="background:#EBF2FA;border:1px solid #bcd2ea;border-radius:9px;padding:14px 16px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <sc-if value="{{ engineerLoggedIn }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ engineerApproved }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:13.5px;color:#1A3A5C;">✅ Conectado como ingeniero: <strong>{{ engineerEmail }}</strong>. Ya puedes comentar en los casos.</div>
+          </sc-if>
+          <sc-if value="{{ engineerPending }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:13.5px;color:#7a4a00;">⏳ Sesión iniciada como <strong>{{ engineerEmail }}</strong>, pero tu cuenta aún no está aprobada como ingeniero. Escribe a Arturo para solicitar acceso.</div>
+          </sc-if>
+          <button type="button" onClick="{{ onLogout }}" style="background:transparent;border:1px solid #1A3A5C;color:#1A3A5C;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cerrar sesión</button>
+        </sc-if>
+        <sc-if value="{{ engineerLoggedOut }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:13.5px;color:#1A3A5C;">¿Eres ingeniero civil? Inicia sesión para poder comentar y orientar a la comunidad.</div>
+          <button type="button" onClick="{{ onLogin }}" style="background:#1A3A5C;color:#fff;border:0;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Iniciar sesión con Google</button>
+        </sc-if>
+      </div>
+
       <div class="rg-wallgrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px;">
         <sc-for list="{{ postsView }}" as="post" hint-placeholder-count="2">
           <article style="border:1px solid #CCC2B4;border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column;border-top:3px solid {{ post.cardAccent }};">
@@ -457,10 +480,15 @@
                 <sc-for list="{{ post.comentarios }}" as="c" hint-placeholder-count="0">
                   <div style="font-size:13px;line-height:1.5;color:#3a352e;background:#faf7f1;border-radius:8px;padding:9px 11px;"><strong style="color:#1A3A5C;font-weight:700;">{{ c.autor }}:</strong> {{ c.txt }}</div>
                 </sc-for>
-                <div style="display:flex;gap:8px;">
-                  <input id="cmt-{{ post.id }}" type="text" placeholder="Escribe un comentario…" style="flex:1;padding:9px 11px;border:1px solid #CCC2B4;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:#1A1A1A;"/>
-                  <button type="button" onClick="{{ post.onComment }}" style="background:#1A3A5C;color:#fff;border:0;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enviar</button>
-                </div>
+                <sc-if value="{{ engineerApproved }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:8px;">
+                    <input id="cmt-{{ post.id }}" type="text" placeholder="Escribe un comentario técnico…" style="flex:1;padding:9px 11px;border:1px solid #CCC2B4;border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:#1A1A1A;"/>
+                    <button type="button" onClick="{{ post.onComment }}" style="background:#1A3A5C;color:#fff;border:0;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Enviar</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ engineerNotApproved }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12px;color:#9a9285;font-style:italic;">Solo ingenieros aprobados pueden comentar. Inicia sesión arriba para solicitar acceso.</div>
+                </sc-if>
               </div>
             </div>
           </article>
@@ -490,7 +518,8 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { posts: [], photo: null, photoBlob: null, result: null, loading: false, postsLoading: true };
+  state = { posts: [], photo: null, photoBlob: null, result: null, loading: false, postsLoading: true,
+            engineerUser: null, engineerApproved: false, engineerChecked: false };
 
   componentDidMount() {
     this._charts = [];
@@ -499,8 +528,39 @@ class Component extends DCLogic {
     this._geocodeCache = {};
     this.formRef = React.createRef();
     this.initCharts();
-    this.waitForFirebase(() => this.subscribePosts());
+    this.waitForFirebase(() => {
+      this.subscribePosts();
+      this.watchAuth();
+    });
   }
+
+  watchAuth() {
+    const fb = window.rgFirebase;
+    fb.onAuthStateChanged(fb.auth, async (user) => {
+      if (!user) {
+        this.setState({ engineerUser: null, engineerApproved: false, engineerChecked: true });
+        return;
+      }
+      let approved = false;
+      try {
+        const snap = await fb.getDoc(fb.doc(fb.db, "ingenieros", user.email.toLowerCase()));
+        approved = snap.exists();
+      } catch (e) { console.error("Error comprobando ingeniero:", e); }
+      this.setState({ engineerUser: user, engineerApproved: approved, engineerChecked: true });
+    });
+  }
+
+  onLogin = async () => {
+    const fb = window.rgFirebase;
+    try {
+      await fb.signInWithPopup(fb.auth, fb.googleProvider);
+    } catch (e) { console.error("Error en login:", e); }
+  };
+
+  onLogout = async () => {
+    const fb = window.rgFirebase;
+    try { await fb.signOut(fb.auth); } catch (e) { console.error("Error cerrando sesión:", e); }
+  };
 
   componentWillUnmount() {
     (this._charts || []).forEach(c => { try { c.destroy(); } catch (e) {} });
@@ -777,14 +837,16 @@ class Component extends DCLogic {
   };
 
   addComment = async (postId) => {
+    if (!this.state.engineerUser || !this.state.engineerApproved) return;
     const input = document.getElementById("cmt-" + postId);
     if (!input) return;
     const txt = (input.value || "").trim();
     if (!txt) return;
     input.value = "";
+    const nombreIngeniero = "Ing. " + (this.state.engineerUser.displayName || this.state.engineerUser.email);
     try {
       const fb = window.rgFirebase;
-      await fb.updateDoc(fb.doc(fb.db, "grietas", postId), { comentarios: fb.arrayUnion({ autor: "Tú", txt }) });
+      await fb.updateDoc(fb.doc(fb.db, "grietas", postId), { comentarios: fb.arrayUnion({ autor: nombreIngeniero, txt }) });
     } catch (err) { console.error("Error añadiendo comentario:", err); }
   };
 
@@ -823,7 +885,14 @@ class Component extends DCLogic {
       formRef: this.formRef, onSubmit: this.onSubmit, onPhoto: this.onPhoto, removePhoto: this.removePhoto,
       photo: this.state.photo, hasPhoto: !!this.state.photo,
       result: this.state.result,
-      postsView, postsCount: postsView.length
+      postsView, postsCount: postsView.length,
+      onLogin: this.onLogin, onLogout: this.onLogout,
+      engineerLoggedIn: !!this.state.engineerUser,
+      engineerLoggedOut: this.state.engineerChecked && !this.state.engineerUser,
+      engineerApproved: !!this.state.engineerUser && this.state.engineerApproved,
+      engineerPending: !!this.state.engineerUser && !this.state.engineerApproved,
+      engineerNotApproved: !(!!this.state.engineerUser && this.state.engineerApproved),
+      engineerEmail: this.state.engineerUser ? this.state.engineerUser.email : ""
     };
   }
 }
